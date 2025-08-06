@@ -1,0 +1,124 @@
+import math
+import copy
+
+X = "X"
+O = "O"
+EMPTY = None
+
+def initial_state():
+    return [[EMPTY]*3 for _ in range(3)]
+
+def player(board):
+    count_x = sum(row.count(X) for row in board)
+    count_o = sum(row.count(O) for row in board)
+    return X if count_x == count_o else O
+
+def actions(board):
+    return [(i, j) for i in range(3) for j in range(3) if board[i][j] is EMPTY]
+
+def result(board, move, p):
+    new_board = copy.deepcopy(board)
+    i, j = move
+    if new_board[i][j] is not EMPTY:
+        raise ValueError("Invalid move")
+    new_board[i][j] = p
+    return new_board
+
+def winner(board):
+    lines = []
+    lines.extend(board)                                 # rows
+    lines.extend(list(zip(*board)))                    # columns
+    lines.append([board[i][i] for i in range(3)])      # diagonal
+    lines.append([board[i][2-i] for i in range(3)])    # other diagonal
+    for line in lines:
+        if line.count(X) == 3:
+            return X
+        if line.count(O) == 3:
+            return O
+    return None
+
+def terminal(board):
+    return winner(board) is not None or all(cell is not EMPTY for row in board for cell in row)
+
+def utility(board):
+    win = winner(board)
+    if win == X:
+        return 1
+    elif win == O:
+        return -1
+    return 0
+
+def minimax(board, alpha=-math.inf, beta=math.inf):
+    if terminal(board):
+        return utility(board), None
+
+    turn = player(board)
+    best_move = None
+
+    if turn == X:
+        max_eval = -math.inf
+        for move in actions(board):
+            eval_score, _ = minimax(result(board, move, X), alpha, beta)
+            if eval_score > max_eval:
+                max_eval = eval_score
+                best_move = move
+            alpha = max(alpha, eval_score)
+            if beta <= alpha:
+                break
+        return max_eval, best_move
+    else:
+        min_eval = math.inf
+        for move in actions(board):
+            eval_score, _ = minimax(result(board, move, O), alpha, beta)
+            if eval_score < min_eval:
+                min_eval = eval_score
+                best_move = move
+            beta = min(beta, eval_score)
+            if beta <= alpha:
+                break
+        return min_eval, best_move
+
+def print_board(board):
+    chars = {X: 'X', O: 'O', EMPTY: ' '}
+    for i, row in enumerate(board):
+        print(' | '.join(chars[cell] for cell in row))
+        if i < 2:
+            print('--+---+--')
+    print()
+
+def human_move(board):
+    print_board(board)
+    valid = actions(board)
+    print("Available moves:", valid)
+    move = None
+    while move not in valid:
+        try:
+            i = int(input("Enter row (0‑2): "))
+            j = int(input("Enter col (0‑2): "))
+            move = (i, j)
+        except ValueError:
+            move = None
+    return result(board, move, O)
+
+def play_game():
+    board = initial_state()
+    print("Welcome! You are 'O', AI is 'X'. X goes first.")
+    while not terminal(board):
+        if player(board) == O:
+            board = human_move(board)
+        else:
+            print("AI is thinking...")
+            _, move = minimax(board)
+            board = result(board, move, X)
+            print(f"AI plays at {move}")
+    print_board(board)
+    w = winner(board)
+    if w == X:
+        print("AI (X) wins!")
+    elif w == O:
+        print("You (O) win!")
+    else:
+        print("It's a draw!")
+
+if __name__ == "__main__":
+    play_game()
